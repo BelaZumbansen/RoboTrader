@@ -1,11 +1,11 @@
-import pandas_datareader as pdr
+import pandas as pd
 import datetime as dt
 import yfinance as yf
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from security import StockPosition
-from security import Security
+import supertrend
+import macd_analysis
 
 def calculate_volatility(ticker:str, period='5y', visualize=False) :
   
@@ -28,6 +28,25 @@ def calculate_volatility(ticker:str, period='5y', visualize=False) :
 
     plt.show()
 
+
+def evaluate_trends(ticker, start_date='2022-01-01', visualize=False):
+
+  data = yf.download(ticker, start=start_date, period='1d')
+
+  super_trend_res = supertrend.generate_trend(data, visualize)
+  macd_res = macd_analysis.evaluate_MACD(data, visualize)
+
+  trend_analysis = pd.concat([super_trend_res, macd_res], axis=1)
+
+  buy_locs = trend_analysis.loc[(trend_analysis['Trend'] == True) & (trend_analysis['Buy'] == True)]
+  print(buy_locs)
+
+  sell_locs = trend_analysis.loc[(trend_analysis['Trend'] == False) | (trend_analysis['Sell'] == True)]
+  print(sell_locs)
+
+  return trend_analysis
+
+
 def calculate_high(ticker, period='5d'):
 
   stock = yf.download(ticker, period=period)
@@ -40,7 +59,5 @@ def current_price(ticker):
   stock = yf.Ticker(ticker)
   return stock.info['currentPrice']
 
-def reached_risk_level(position : StockPosition):
-  return (position.buy_price * position.risk_level) >= current_price(position.ticker)
-
-calculate_volatility('AAPL', visualize=True)
+#calculate_volatility('AAPL', visualize=True)
+evaluate_trends('AAPL')
