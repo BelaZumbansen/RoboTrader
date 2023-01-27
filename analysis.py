@@ -29,22 +29,26 @@ def calculate_volatility(ticker:str, period='5y', visualize=False) :
     plt.show()
 
 
-def evaluate_trends(ticker, start_date='2022-01-01', visualize=False):
+def evaluate_trends(ticker, start_date='2022-01-01', end_date=None, visualize=False):
 
-  data = yf.download(ticker, start=start_date, period='1d')
+  data = None
+  if end_date:
+    data = yf.download(ticker, start=start_date, end=end_date, period='1d')
+  else:
+    data = yf.download(ticker, start=start_date, period='1d')
 
+  
   super_trend_res = supertrend.generate_trend(data, visualize)
   macd_res = macd_analysis.evaluate_MACD(data, visualize)
 
   trend_analysis = pd.concat([super_trend_res, macd_res], axis=1)
 
   buy_locs = trend_analysis.loc[(trend_analysis['Trend'] == True) & (trend_analysis['Buy'] == True)]
+  sell_locs = trend_analysis.loc[(trend_analysis['Trend'] == False) | (trend_analysis['Sell'] == True)]
+
   print(buy_locs)
 
-  sell_locs = trend_analysis.loc[(trend_analysis['Trend'] == False) | (trend_analysis['Sell'] == True)]
-  print(sell_locs)
-
-  return trend_analysis
+  return trend_analysis, buy_locs, sell_locs
 
 
 def calculate_high(ticker, period='5d'):
