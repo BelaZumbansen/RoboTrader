@@ -58,15 +58,15 @@ def exit_positions(tickers, date, positions, logs):
 
     return liquidated
     
-def trading_day(tickers, date, positions, balance, logs):
+def trading_day(tickers, today_date, positions, balance, logs):
 
     try:
-        date_split = date.split('/')
-        day, month, year = [date_split[i] for i in (0, 1, 2)]
+        date_split = today_date.split('-')
+        year, month, day = [date_split[i] for i in (0, 1, 2)]
 
         start_year = int(year) - 2
-        start_date = start_year + '/' + month + '/' + day
-        end_date = year + '/' + month + '/' + day
+        start_date = str(start_year) + '-' + month + '-' + day
+        end_date = year + '-' + month + '-' + day
     except:
         print('Date was passed in the wrong format.')
         return
@@ -77,8 +77,8 @@ def trading_day(tickers, date, positions, balance, logs):
     for ticker in tickers:
 
         trends, buy_signals, sell_signals = analysis.evaluate_trends(ticker, start_date=start_date, end_date=end_date)
-
-        today = date(year, month, day)
+        
+        today = date(int(year), int(month), int(day))
         buy_dates = buy_signals['Date'].values()
         sell_dates = sell_signals['Date'].values()
 

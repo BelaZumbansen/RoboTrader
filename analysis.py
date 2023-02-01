@@ -62,6 +62,3 @@ def current_price(ticker):
 
   stock = yf.Ticker(ticker)
   return stock.info['currentPrice']
-
-#calculate_volatility('AAPL', visualize=True)
-evaluate_trends('AAPL')
