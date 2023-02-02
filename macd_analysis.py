@@ -80,4 +80,3 @@ def evaluate_MACD(data, visualize=False):
     print(sell_locs)
 
   return output
-

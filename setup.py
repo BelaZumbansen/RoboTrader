@@ -1,7 +1,6 @@
 from setuptools import setup
 
-setup(
-  name='robotrader',
+setup(name='robotrader',
   version='0.1',
   description='Robotic Trader',
   url='https://github.com/BelaZumbansen/RoboTrader',
