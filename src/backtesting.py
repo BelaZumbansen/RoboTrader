@@ -34,26 +34,30 @@ def get_backtest_tickers() -> list[str]:
   """
   return ['AAPL', '^GSPC', 'MSFT', 'AMZN']
 
-def backtest():
+def backtest(starting_balance=100000, start_date='2019-01-01', end_date='2020-12-31', tickers=None) -> str:
   """
   Backtest Trading Strategy on historical date range and ticker set of your choice
   """
 
   # Retrieve valid trading Days
-  trading_days = get_trading_days('2019-01-01', '2020-12-31')
+  trading_days = get_trading_days(start_date, end_date)
 
   bar = progressbar.ProgressBar(maxval=len(trading_days), \
     widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
 
   # Start with $100000
-  balance = 100000
+  if not starting_balance:
+    balance = 100000
+  else:
+    balance = starting_balance
 
   # No Past Transactions and no Open Positions
   transaction_log = []
   positions = dict()
 
   # Retrieve Tickers we wish to use for this simulation
-  tickers = get_backtest_tickers()
+  if not tickers:
+    tickers = get_backtest_tickers()
 
   # Start up the progress bar
   bar.start()
@@ -69,12 +73,20 @@ def backtest():
   bar.finish()
 
   # Exit all current positions to see how well the simulation did
-  print('Holding Positions')
-  print(positions)
+  #print('Holding Positions')
+  #print(positions)
   balance += sim.exit_all_positions(trading_days[-1], positions, transaction_log, backtest=True)
 
-  print('Invested $100000 and ended up with $' + str(balance) + '. This is a profit of ' + str(int(((balance - 100000)/100000)*100)) + '%')
-  print(transaction_log)
+  result_msg = 'Invested $100000 and ended up with $' 
+  + str(balance) 
+  + '. This is a profit of ' 
+  + str(int(((balance - 100000)/100000)*100)) + '%'
+
+  #print(result_msg)
+  #print(transaction_log)
+
+  return result_msg
+
 
 if __name__ == "__main__":
   backtest()
