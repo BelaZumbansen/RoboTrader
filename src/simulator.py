@@ -2,16 +2,16 @@ import analysis
 import datetime
 import yfinance as yf
 
-def generate_sale_transaction(ticker : str, date : str, amount : int, sell_price : int, buy_price : int) -> dict:
+def generate_sale_transaction(ticker : str, date : str, amount : int, sell_price : float, buy_price : float) -> dict:
     """
     Generate a log of a stock sale transaction containing all relevant information:
     Ticker, Transaction Date, Amount, Buy Price, Sell Price, Profit Made on Trade
     """
 
     return { 'ticker': ticker, 'date': date, 'amount': amount, 'sell_price': sell_price,
-    'buy_price': buy_price, 'profit': (buy_price / sell_price)*100}
+    'buy_price': buy_price, 'profit': ((buy_price - sell_price) / sell_price)*100}
 
-def generate_buy_transaction(ticker : str, date : str, amount : int, buy_price : int) -> dict:
+def generate_buy_transaction(ticker : str, date : str, amount : int, buy_price : float) -> dict:
     """
     Generate a log of a stock buy transaction containing all relevant information:
     Ticker, Transaction Date, Amount, Buy Price
@@ -19,7 +19,7 @@ def generate_buy_transaction(ticker : str, date : str, amount : int, buy_price :
 
     return {'ticker': ticker, 'date': date, 'amount': amount, 'buy_price': buy_price}
 
-def enter_positions(tickers : list[str], date : str, balance : int, positions : dict, logs : list[dict], backtest=False) -> int:
+def enter_positions(tickers : list[str], date : str, balance : float, positions : dict, logs : list[dict], backtest=False) -> float:
     """
     Make an Investment in the passed stock. Portion of balance will be allocated to the purchase.
     If backtesting, the opening price on the purchase date will be used.
@@ -45,8 +45,7 @@ def enter_positions(tickers : list[str], date : str, balance : int, positions : 
 
         # If not backtesting, retrieve current market price
         if not backtest:
-            stock = yf.Ticker(ticker)
-            buy_price = stock.info['regularMarketPrice']
+            sell_price = analysis.current_price(ticker)
         # If backtesting, retrieve historical opening price
         else:
             buy_price = get_opening_price(ticker, date)
@@ -69,7 +68,7 @@ def enter_positions(tickers : list[str], date : str, balance : int, positions : 
     # Return our balance after all transactions have been made
     return new_balance
 
-def exit_all_positions(date, positions, logs, backtest=False):
+def exit_all_positions(date : str, positions : dict, logs : list[dict], backtest=False) -> float:
     """
     Pull all funds out of the market
     """
@@ -80,49 +79,84 @@ def exit_all_positions(date, positions, logs, backtest=False):
     # Exit positions and return updated balance
     return exit_positions(tickers, date, positions, logs, backtest=backtest)
 
-def get_opening_price(ticker, date):
+def get_opening_price(ticker : str, date : str) -> float:
     """
     Retrieve the historical opening price of a stock
     """
 
     ticker_item = yf.Ticker(ticker)
+    
+    # Retrieve History from Yahoo Finance
     historical = ticker_item.history(period='1w', interval='1d', start=date)
+    
+    # Seperate open prices
     open_price = historical['Open']
+    # First index will contain price on date as this was the beginning of our search range
     return open_price[0]
 
-def exit_positions(tickers, date, positions, logs, backtest=False):
+def exit_positions(tickers : list[str], date : str, positions : dict, logs : list[dict], 
+                   backtest=False) -> float:
+    """
+    Pull out of given stocks and return the amount of funds liquidated by the sale. The sale is logged and
+    the profit made on the trade is tracked.
+    """
 
     liquidated = 0
 
+    # Iterate over positions to pull out of
     for ticker in tickers:
 
+        # Retrieve list of open positions, one per buy since the last sell
         sell_positions = positions.pop(ticker, None)
+
+        # If we have open positions, pull out of all of them
         if sell_positions:
-            
+
+            # If not backtesting, base the selling price on the current open market price
             if not backtest:
-                stock = yf.Ticker(ticker)
-                sell_price = stock.info['regularMarketPrice']
+                sell_price = analysis.current_price(ticker)
+            # If backtesting, get the opening price on the day of the sale
             else:
                 sell_price = get_opening_price(ticker, date)
 
+            # Sell all positions in this stock
             for sell_position in sell_positions:
                 liquidated += sell_price*sell_position['amount']
+                
+                # Create transaction log
                 log = generate_sale_transaction(ticker, date, sell_position['amount'], sell_price, sell_position['buy_price'])
                 logs.append(log)
 
+    # Return the amount of funds freed up by this sale
     return liquidated
-    
-def trading_day(tickers, today_date, last_trading_day, positions, balance, logs, backtest=False):
+
+def trading_day(tickers : list[str], today_date : str, last_trading_day : str, positions : dict,
+                balance : float, logs : list[dict], backtest=False) -> float:
+    """
+    Execute trading strategy on a Trading Day. Strategy involves calculating buy and sell signals to 
+    determine when to buy in to and exit from positions. We calculate trends and decide which stocks
+    are giving us which signals. If we receive a buy signal we buy into and if we receive a sell signal
+    for a stock we are currently holding, we back out.
+    This method updates the positions dictionary and log list.
+    Returns the updated balance after the day of trading.
+    """
 
     yesterday_date = ''
     try:
+        # Parse the date
         date_split = today_date.split('-')
         year, month, day = [date_split[i] for i in (0, 1, 2)]
 
+        # Determine when to start our analysis. We choose to do 2 years ago
         start_year = int(year) - 2
-        start_date = str(start_year) + '-' + month + '-' + day
+        # Account for leap years
+        if month == 2 and day == 28:
+            start_date = str(start_year) + '-' + month + '-' + str(int(day) - 1)
+        else:
+            start_date = str(start_year) + '-' + month + '-' + day
+        
+        # We end our analysis at the current date
         end_date = year + '-' + month + '-' + day
-
         #yesterday_date = (datetime.date(int(year), int(month), int(day) - datetime.timedelta(1))).strftime('%Y-%m-%d')
     except:
         print('Date was passed in the wrong format.')
@@ -131,25 +165,27 @@ def trading_day(tickers, today_date, last_trading_day, positions, balance, logs,
     exit_list = []
     shopping_list = []
 
+    # Execute strategy on each stock we would like to trade on
     for ticker in tickers:
 
+        # Evaluate market trends and determine dates on which they tell us to sell or buy
         trends, buy_dates, sell_dates = analysis.evaluate_trends(ticker, start_date=start_date, end_date=end_date)
-        
-        buying = False
 
-        for buy_date in buy_dates:
-            if buy_date == last_trading_day:
-                shopping_list.append(ticker)
-                buying = True
-
-        if buying:
+        # Check if last trading day is in buy dates
+        # Flagged day will be the last trading day if we wish to buy today as the strategy operates on
+        # buying as soon as the market opens by analyzing closing prices.
+        if last_trading_day in buy_dates:
+            shopping_list.append(ticker)
+            # Do not check for back out if we know we are buying today.
             continue
+        
+        # Check if last trading day is in the sell dates
+        if last_trading_day in sell_dates:
+            exit_list.append(ticker)
 
-        for sell_date in sell_dates:
-            if sell_date == last_trading_day:
-                exit_list.append(ticker)
-
+    # Back out of positions and update balance with freed funds
     balance += exit_positions(exit_list, today_date, positions, logs, backtest=backtest)
+    # Enter new positions
     balance = enter_positions(shopping_list, today_date, balance, positions, logs, backtest=backtest)
 
     # Exit Trading Day, all trades have been completed

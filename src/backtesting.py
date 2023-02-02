@@ -40,7 +40,7 @@ def backtest():
   """
 
   # Retrieve valid trading Days
-  trading_days = get_trading_days('2019-01-01', '2019-06-30')
+  trading_days = get_trading_days('2019-01-01', '2020-12-31')
 
   bar = progressbar.ProgressBar(maxval=len(trading_days), \
     widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
@@ -73,7 +73,7 @@ def backtest():
   print(positions)
   balance += sim.exit_all_positions(trading_days[-1], positions, transaction_log, backtest=True)
 
-  print('Invested $100000 and ended up with $' + str(balance) + '. This is a profit of ' + str(int((balance - 100000)/100000)*100) + '%')
+  print('Invested $100000 and ended up with $' + str(balance) + '. This is a profit of ' + str(int(((balance - 100000)/100000)*100)) + '%')
   print(transaction_log)
 
 if __name__ == "__main__":
