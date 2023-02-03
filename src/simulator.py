@@ -1,6 +1,32 @@
 import analysis
 import datetime
 import yfinance as yf
+import numpy as np
+import pandas_market_calendars as mcal
+import pandas as pd
+
+def get_trading_days(start_date : str, end_date : str) -> np.ndarray:
+  """
+  Retrieve all valid Tradings days on the New York Stock Exchange between the given
+  start date and end date. Return as Numpy Array.
+  """
+
+  # Initialize NYSE Calendar
+  nyse = mcal.get_calendar('NYSE')
+
+  # Format Date Range
+  schedule = nyse.schedule(start_date=start_date, end_date=end_date)
+  date_range = mcal.date_range(schedule, frequency='1D')
+
+  # Convert to Numpy Array
+  date_series = pd.Series(date_range.format())
+  days = np.asarray(date_series)
+
+  # Truncate the Date strings to 'YYYY-MM-DD'
+  for i in range(len(days)):
+    days[i] = days[i][:10]
+  
+  return days
 
 def generate_sale_transaction(ticker : str, date : str, amount : int, sell_price : float, buy_price : float) -> dict:
     """
@@ -129,6 +155,17 @@ def exit_positions(tickers : list[str], date : str, positions : dict, logs : lis
 
     # Return the amount of funds freed up by this sale
     return liquidated
+
+def simulate_daily_trades(tickers : list[str], today_date : str, positions : dict,
+                          balance : float, logs : list[dict]):
+    """
+    Simulate buy and sell for today's date based on analysis up to closing on the previous trading date.
+    """
+
+    dates = get_trading_days('2023-01-01', today_date)
+
+    return trading_day(tickers, dates[-1], dates[-2], positions, balance, logs)
+
 
 def trading_day(tickers : list[str], today_date : str, last_trading_day : str, positions : dict,
                 balance : float, logs : list[dict], backtest=False) -> float:

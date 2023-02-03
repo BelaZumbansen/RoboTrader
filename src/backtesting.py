@@ -5,29 +5,6 @@ import simulator as sim
 import datetime
 import progressbar
 
-def get_trading_days(start_date : str, end_date : str) -> np.ndarray:
-  """
-  Retrieve all valid Tradings days on the New York Stock Exchange between the given
-  start date and end date. Return as Numpy Array.
-  """
-
-  # Initialize NYSE Calendar
-  nyse = mcal.get_calendar('NYSE')
-
-  # Format Date Range
-  schedule = nyse.schedule(start_date=start_date, end_date=end_date)
-  date_range = mcal.date_range(schedule, frequency='1D')
-
-  # Convert to Numpy Array
-  date_series = pd.Series(date_range.format())
-  days = np.asarray(date_series)
-
-  # Truncate the Date strings to 'YYYY-MM-DD'
-  for i in range(len(days)):
-    days[i] = days[i][:10]
-  
-  return days
-
 def get_backtest_tickers() -> list[str]:
   """
   Return Tickers you would like to use to run your backtesting.
@@ -40,7 +17,7 @@ def backtest(starting_balance=100000, start_date='2019-01-01', end_date='2020-12
   """
 
   # Retrieve valid trading Days
-  trading_days = get_trading_days(start_date, end_date)
+  trading_days = sim.get_trading_days(start_date, end_date)
 
   bar = progressbar.ProgressBar(maxval=len(trading_days), \
     widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
