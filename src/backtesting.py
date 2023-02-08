@@ -28,6 +28,8 @@ def backtest(starting_balance=100000, start_date='2019-01-01', end_date='2020-12
   else:
     balance = starting_balance
 
+  starting_balance = balance
+
   # No Past Transactions and no Open Positions
   transaction_log = []
   positions = dict()
@@ -54,10 +56,11 @@ def backtest(starting_balance=100000, start_date='2019-01-01', end_date='2020-12
   #print(positions)
   balance += sim.exit_all_positions(trading_days[-1], positions, transaction_log, backtest=True)
 
-  result_msg = 'Invested $100000 and ended up with $' 
-  + str(balance) 
-  + '. This is a profit of ' 
-  + str(int(((balance - 100000)/100000)*100)) + '%'
+  result_msg = ''.join(['Invested $', str(starting_balance), ' and ended up with $', 
+  str(balance), 
+  '. This is a profit of ', 
+  str(int(((balance - starting_balance)/starting_balance)*100)),
+  '%'])
 
   #print(result_msg)
   #print(transaction_log)
